@@ -1,0 +1,13 @@
+#!/bin/bash
+
+API_KEY="" #Aqui va tu clave API.
+CITY="Madrid" #Escribir la ciudad objetivo.
+URL="https://api.openweathermap.org/data/2.5/weather?q=$CITY&appid=$API_KEY&units=metric"
+LOG_FILE="$Home/output.log" #Ruta donde se guardara el log.
+
+
+# Obtener datos de la API y guardarlos en output.log
+curl -s "$URL" >> "$LOG_FILE"
+echo "" >> "$LOG_FILE"  # Agregar una línea en blanco para separar registros
+
+

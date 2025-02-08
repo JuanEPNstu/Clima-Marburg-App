@@ -1,0 +1,37 @@
+import json
+import pandas as pd
+
+def parse_weather_log(log_path, output_csv):
+    """
+    Lee output.log, extrae datos del clima y los convierte en un archivo CSV.
+
+    Args:
+        log_path (str): Ruta del archivo de log con los datos en JSON.
+        output_csv (str): Nombre del archivo CSV de salida.
+
+    Returns:
+        None
+    """
+    data_list = []
+    
+    with open(log_path, "r") as file:
+        raw_data = file.read().strip().split("\n\n")  # Separa registros por líneas en blanco
+    
+    for entry in raw_data:
+        try:
+            data = json.loads(entry)
+            row = {
+                "timestamp": pd.Timestamp.now(),
+                "temp": data["main"]["temp"],
+                "humidity": data["main"]["humidity"],
+                "pressure": data["main"]["pressure"],
+                "wind_speed": data["wind"]["speed"],
+                "description": data["weather"][0]["description"]
+            }
+            data_list.append(row)
+        except json.JSONDecodeError:
+            print("Error al decodificar una entrada, saltando...")
+
+    df = pd.DataFrame(data_list)
+    df.to_csv(output_csv, index=False)
+    print(f"Datos guardados en {output_csv}")
