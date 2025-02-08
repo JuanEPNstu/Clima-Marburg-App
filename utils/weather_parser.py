@@ -1,27 +1,24 @@
 import json
 import pandas as pd
 
-def parse_weather_log(log_path, output_csv, timestamp):
+def parse_weather_log(log_path, output_csv):
     """
-    Lee output.log, extrae datos del clima y los convierte en un archivo CSV.
-
-    Args:
-        log_path (str): Ruta del archivo de log con los datos en JSON.
-        output_csv (str): Nombre del archivo CSV de salida.
-
-    Returns:
-        None
+    Versión corregida manteniendo todas las columnas originales.
+    Incluye mejor manejo de errores para campos opcionales.
     """
     data_list = []
     
     with open(log_path, "r") as file:
-        raw_data = file.read().strip().split("\n\n") 
+        # Leer cada línea como un JSON independiente
+        raw_entries = [line.strip() for line in file if line.strip()]
     
-    for entry in raw_data:
+    for entry in raw_entries:
         try:
             data = json.loads(entry)
+            
+            # Usar .get() para campos opcionales y anidados
             row = {
-                "timestamp": timestamp,
+                "timestamp": data["timestamp"],
                 "coord_lon": data["coord"]["lon"],
                 "coord_lat": data["coord"]["lat"],
                 "weather_0_id": data["weather"][0]["id"],
@@ -35,12 +32,12 @@ def parse_weather_log(log_path, output_csv, timestamp):
                 "main_temp_max": data["main"]["temp_max"],
                 "main_pressure": data["main"]["pressure"],
                 "main_humidity": data["main"]["humidity"],
-                "main_sea_level": data["main"]["sea_level"],
-                "main_grnd_level": data["main"]["grnd_level"],
+                "main_sea_level": data["main"].get("sea_level"),  # Campo opcional
+                "main_grnd_level": data["main"].get("grnd_level"), # Campo opcional
                 "visibility": data["visibility"],
-                "wind_speed": data["wind"]["speed"],
-                "wind_deg": data["wind"]["deg"],
-                "wind_gust": data["wind"]["gust"],
+                "wind_speed": data.get("wind", {}).get("speed"),  # Usar get() anidado
+                "wind_deg": data.get("wind", {}).get("deg"),
+                "wind_gust": data.get("wind", {}).get("gust"),
                 "clouds_all": data["clouds"]["all"],
                 "sys_type": data["sys"]["type"],
                 "sys_id": data["sys"]["id"],
@@ -55,11 +52,17 @@ def parse_weather_log(log_path, output_csv, timestamp):
                 "Nieve_1h": data.get("snow", {}).get("1h", 0)   
             }
             data_list.append(row)
-        except json.JSONDecodeError:
-            print("Error al decodificar una entrada, saltando...")
+            
+        except json.JSONDecodeError as e:
+            print(f"Error decodificando JSON: {str(e)}")
         except KeyError as e:
-            print(f"Clave no encontrada en los datos: {e}, saltando...")
+            print(f"Campo faltante: {e} en entrada: {entry[:100]}...")
+        except IndexError:
+            print(f"Falta elemento en lista 'weather': {entry[:100]}...")
 
-    df = pd.DataFrame(data_list)
-    df.to_csv(output_csv, index=False, sep=';')
-    print(f"Datos guardados en {output_csv}")
+    if data_list:
+        df = pd.DataFrame(data_list)
+        df.to_csv(output_csv, index=False, sep=';', encoding='utf-8')
+        print(f"CSV creado exitosamente: {output_csv}")
+    else:
+        print("No se procesaron datos válidos")
